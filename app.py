@@ -103,10 +103,10 @@ class GPTInterface:
             return cleaned
 
     def generate_iros(self, context: dict) -> dict:
-        """Génère des IRO via GPT avec gestion des erreurs améliorée"""
+        """Génère l'analyse IRO (Impact, Risques, Opportunités) via GPT"""
         prompt = self._create_prompt(context)
         
-        with st.spinner('Analyse en cours et génération des IRO...'):
+        with st.spinner('Analyse des impacts, risques et opportunités en cours...'):
             progress_bar = st.progress(0)
             try:
                 # Simulation de progression
@@ -117,14 +117,13 @@ class GPTInterface:
                 response = self.client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'identification des IRO. 
-                        Votre rôle est d'analyser en profondeur TOUS les enjeux mentionnés et de fournir une analyse CSRD complète.
-                        Les IRO (Indicateurs de Résultat Obligatoires) sont des indicateurs CSRD spécifiques, distincts des KPIs classiques.
+                        {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'analyse des impacts, risques et opportunités (IRO).
+                        Pour chaque enjeu identifié, vous devez analyser ses impacts, risques et opportunités, ainsi que suggérer des datapoints pertinents selon les exigences CSRD.
                         
                         RÈGLES IMPORTANTES:
                         1. Vous DEVEZ traiter TOUS les enjeux mentionnés, sans exception
                         2. Respectez STRICTEMENT le format JSON demandé
-                        3. Chaque IRO doit être un objet JSON valide avec TOUS les champs requis
+                        3. Pour chaque enjeu, identifiez les datapoints CSRD pertinents (KPIs ou justifications argumentées)
                         4. Ne limitez pas le nombre d'enjeux traités"""},
                         {"role": "user", "content": prompt}
                     ],
@@ -177,7 +176,7 @@ class GPTInterface:
         """Crée le prompt pour l'analyse CSRD"""
         return f"""
         En tant qu'expert CSRD, analysez TOUS les enjeux mentionnés dans les textes fournis.
-        Pour CHAQUE enjeu mentionné, vous devez fournir une analyse détaillée et complète.
+        Pour CHAQUE enjeu mentionné, vous devez fournir une analyse complète des impacts, risques et opportunités.
 
         PROFIL DE L'ENTREPRISE:
         {context['company_description']}
@@ -191,7 +190,7 @@ class GPTInterface:
         CARACTÉRISTIQUES SPÉCIFIQUES:
         {context['specific_features']}
 
-        ENJEUX À ANALYSER EN DÉTAIL:
+        ENJEUX À ANALYSER:
         [IMPORTANT: Analyser TOUS les enjeux mentionnés ci-dessous]
         
         Environnement: {context['priority_issues']['environmental']}
@@ -202,7 +201,7 @@ class GPTInterface:
         {{
             "environnement": {{
                 "nom_enjeu_1": {{
-                    "description": "Description détaillée",
+                    "description": "Description détaillée de l'enjeu",
                     "impacts": {{
                         "positifs": ["impact1", "impact2"],
                         "negatifs": ["impact1", "impact2"]
@@ -219,16 +218,17 @@ class GPTInterface:
                         "horizon": "Court/Moyen/Long terme",
                         "actions_saisie": ["action1", "action2"]
                     }},
-                    "iros": [
+                    "datapoints_csrd": [
                         {{
-                            "indicateur": "Nom IRO",
-                            "description": "Description IRO",
-                            "methodologie": "Méthodologie",
-                            "frequence": "Fréquence",
+                            "indicateur": "Nom du datapoint",
+                            "type": "KPI/Justification",
+                            "description": "Description du datapoint",
+                            "methodologie": "Méthodologie de collecte/calcul",
+                            "frequence": "Fréquence de mesure",
                             "objectifs": {{
-                                "court_terme": "Objectif 1 an",
-                                "moyen_terme": "Objectif 3 ans",
-                                "long_terme": "Objectif 5 ans"
+                                "court_terme": "Objectif à 1 an",
+                                "moyen_terme": "Objectif à 3 ans",
+                                "long_terme": "Objectif à 5 ans"
                             }}
                         }}
                     ]
@@ -240,9 +240,9 @@ class GPTInterface:
 
         ATTENTION:
         - Vous DEVEZ traiter ABSOLUMENT TOUS les enjeux mentionnés
-        - Chaque IRO doit être un objet JSON COMPLET avec TOUS les champs
+        - Pour chaque enjeu, identifiez les impacts, risques et opportunités pertinents
+        - Suggérez des datapoints CSRD appropriés (KPIs ou justifications argumentées)
         - Adaptez chaque analyse au contexte spécifique de l'entreprise
-        - Fournissez une analyse exhaustive et détaillée pour chaque enjeu
         - Ne limitez PAS le nombre d'enjeux traités
         - Assurez-vous que la réponse est un JSON valide et complet
         """
@@ -345,117 +345,121 @@ def display_results(results: Dict):
         if pilier_id in results:
             with tab:
                 for enjeu, details in results[pilier_id].items():
-                    st.subheader(f"🎯 Enjeu : {enjeu}")
-                    
-                    if show_details:
-                        # Description
-                        if "description" in details:
-                            st.markdown("### 📝 Description")
-                            st.write(details["description"])
-                        
-                        # Impacts
-                        if "impacts" in details:
-                            st.markdown("### 💫 Impacts")
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.markdown("#### ✅ Impacts positifs")
-                                if "positifs" in details["impacts"]:
-                                    for impact in details["impacts"]["positifs"]:
-                                        st.write(f"- {impact}")
-                            with col2:
-                                st.markdown("#### ❌ Impacts négatifs")
-                                if "negatifs" in details["impacts"]:
-                                    for impact in details["impacts"]["negatifs"]:
-                                        st.write(f"- {impact}")
-                        
-                        # Risques
-                        if "risques" in details:
-                            with st.expander("⚠️ Risques et mesures d'atténuation", expanded=True):
-                                if "niveau" in details["risques"]:
-                                    st.write(f"**Niveau de risque :** {details['risques']['niveau']}")
-                                if "horizon" in details["risques"]:
-                                    st.write(f"**Horizon :** {details['risques']['horizon']}")
-                                if "liste" in details["risques"]:
-                                    st.markdown("**Risques identifiés :**")
-                                    for risque in details["risques"]["liste"]:
-                                        st.write(f"- {risque}")
-                                if "mesures_attenuation" in details["risques"]:
-                                    st.markdown("**🛡️ Mesures d'atténuation :**")
-                                    for mesure in details["risques"]["mesures_attenuation"]:
-                                        st.write(f"- {mesure}")
-                        
-                        # Opportunités
-                        if "opportunites" in details:
-                            with st.expander("🎯 Opportunités et actions", expanded=True):
-                                if "potentiel" in details["opportunites"]:
-                                    st.write(f"**Potentiel :** {details['opportunites']['potentiel']}")
-                                if "horizon" in details["opportunites"]:
-                                    st.write(f"**Horizon :** {details['opportunites']['horizon']}")
-                                if "liste" in details["opportunites"]:
-                                    st.markdown("**Opportunités identifiées :**")
-                                    for opportunite in details["opportunites"]["liste"]:
-                                        st.write(f"- {opportunite}")
-                                if "actions_saisie" in details["opportunites"]:
-                                    st.markdown("**🚀 Actions proposées :**")
-                                    for action in details["opportunites"]["actions_saisie"]:
-                                        st.write(f"- {action}")
-                    
-                    # IROs (toujours affichés)
-                    if "iros" in details and isinstance(details["iros"], list):
-                        st.markdown("### 📊 Indicateurs de Résultat Obligatoires (IRO)")
-                        for idx, iro in enumerate(details["iros"], 1):
-                            if not isinstance(iro, dict):
-                                st.error(f"Format d'IRO invalide pour l'enjeu {enjeu}")
-                                continue
-                                
-                            with st.expander(f"📌 IRO {idx}: {iro.get('indicateur', 'Non spécifié')}", expanded=True):
-                                for field, label in [
-                                    ('description', 'Description'),
-                                    ('methodologie', 'Méthodologie'),
-                                    ('frequence', 'Fréquence')
-                                ]:
-                                    if field in iro:
-                                        st.write(f"**{label} :** {iro[field]}")
-                                
-                                if "objectifs" in iro and isinstance(iro["objectifs"], dict):
-                                    st.markdown("**Objectifs :**")
-                                    obj = iro["objectifs"]
-                                    for term, label in [
-                                        ('court_terme', 'Court terme'),
-                                        ('moyen_terme', 'Moyen terme'),
-                                        ('long_terme', 'Long terme')
-                                    ]:
-                                        if term in obj:
-                                            st.write(f"- {label} : {obj[term]}")
+                    with st.expander(f"🎯 Enjeu : {enjeu}", expanded=True):
+                        if show_details:
+                            # Description
+                            if "description" in details:
+                                st.markdown("### 📝 Description")
+                                st.write(details["description"])
                             
-                            # Ajout pour l'export Excel
-                            if isinstance(iro.get('objectifs'), dict):
-                                row_data = {
-                                    "Pilier": pilier_name,
-                                    "Enjeu": enjeu,
-                                    "IRO": iro.get('indicateur', ''),
-                                    "Description IRO": iro.get('description', ''),
-                                    "Méthodologie": iro.get('methodologie', ''),
-                                    "Fréquence": iro.get('frequence', ''),
-                                    "Objectif CT": iro['objectifs'].get('court_terme', ''),
-                                    "Objectif MT": iro['objectifs'].get('moyen_terme', ''),
-                                    "Objectif LT": iro['objectifs'].get('long_terme', ''),
-                                    "Description Enjeu": details.get('description', ''),
-                                    "Impacts Positifs": ", ".join(details.get('impacts', {}).get('positifs', [])),
-                                    "Impacts Négatifs": ", ".join(details.get('impacts', {}).get('negatifs', [])),
-                                    "Risques": ", ".join(details.get('risques', {}).get('liste', [])),
-                                    "Niveau Risque": details.get('risques', {}).get('niveau', ''),
-                                    "Horizon Risque": details.get('risques', {}).get('horizon', ''),
-                                    "Mesures Atténuation": ", ".join(details.get('risques', {}).get('mesures_attenuation', [])),
-                                    "Opportunités": ", ".join(details.get('opportunites', {}).get('liste', [])),
-                                    "Potentiel Opportunité": details.get('opportunites', {}).get('potentiel', ''),
-                                    "Horizon Opportunité": details.get('opportunites', {}).get('horizon', ''),
-                                    "Actions Saisie": ", ".join(details.get('opportunites', {}).get('actions_saisie', []))
-                                }
+                            # IRO sections dans des accordéons
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                # Impacts
+                                with st.expander("💫 Impacts", expanded=True):
+                                    if "impacts" in details:
+                                        st.markdown("#### ✅ Impacts positifs")
+                                        if "positifs" in details["impacts"]:
+                                            for impact in details["impacts"]["positifs"]:
+                                                st.write(f"- {impact}")
+                                        
+                                        st.markdown("#### ❌ Impacts négatifs")
+                                        if "negatifs" in details["impacts"]:
+                                            for impact in details["impacts"]["negatifs"]:
+                                                st.write(f"- {impact}")
                                 
-                                rows.append(row_data)
-                    
-                    st.divider()
+                                # Risques
+                                with st.expander("⚠️ Risques", expanded=True):
+                                    if "risques" in details:
+                                        if "niveau" in details["risques"]:
+                                            st.write(f"**Niveau de risque :** {details['risques']['niveau']}")
+                                        if "horizon" in details["risques"]:
+                                            st.write(f"**Horizon :** {details['risques']['horizon']}")
+                                        if "liste" in details["risques"]:
+                                            st.markdown("**Risques identifiés :**")
+                                            for risque in details["risques"]["liste"]:
+                                                st.write(f"- {risque}")
+                                        if "mesures_attenuation" in details["risques"]:
+                                            st.markdown("**🛡️ Mesures d'atténuation :**")
+                                            for mesure in details["risques"]["mesures_attenuation"]:
+                                                st.write(f"- {mesure}")
+                            
+                            with col2:
+                                # Opportunités
+                                with st.expander("🎯 Opportunités", expanded=True):
+                                    if "opportunites" in details:
+                                        if "potentiel" in details["opportunites"]:
+                                            st.write(f"**Potentiel :** {details['opportunites']['potentiel']}")
+                                        if "horizon" in details["opportunites"]:
+                                            st.write(f"**Horizon :** {details['opportunites']['horizon']}")
+                                        if "liste" in details["opportunites"]:
+                                            st.markdown("**Opportunités identifiées :**")
+                                            for opportunite in details["opportunites"]["liste"]:
+                                                st.write(f"- {opportunite}")
+                                        if "actions_saisie" in details["opportunites"]:
+                                            st.markdown("**🚀 Actions proposées :**")
+                                            for action in details["opportunites"]["actions_saisie"]:
+                                                st.write(f"- {action}")
+                        
+                        # Datapoints CSRD
+                        if "datapoints_csrd" in details and isinstance(details["datapoints_csrd"], list):
+                            st.markdown("### 📊 Datapoints CSRD conseillés")
+                            for idx, datapoint in enumerate(details["datapoints_csrd"], 1):
+                                if not isinstance(datapoint, dict):
+                                    st.error(f"Format de datapoint invalide pour l'enjeu {enjeu}")
+                                    continue
+                                    
+                                with st.expander(f"📌 Datapoint {idx}: {datapoint.get('indicateur', 'Non spécifié')}", expanded=True):
+                                    st.write(f"**Type :** {datapoint.get('type', 'Non spécifié')}")
+                                    for field, label in [
+                                        ('description', 'Description'),
+                                        ('methodologie', 'Méthodologie'),
+                                        ('frequence', 'Fréquence')
+                                    ]:
+                                        if field in datapoint:
+                                            st.write(f"**{label} :** {datapoint[field]}")
+                                    
+                                    if "objectifs" in datapoint and isinstance(datapoint["objectifs"], dict):
+                                        st.markdown("**Objectifs :**")
+                                        obj = datapoint["objectifs"]
+                                        for term, label in [
+                                            ('court_terme', 'Court terme'),
+                                            ('moyen_terme', 'Moyen terme'),
+                                            ('long_terme', 'Long terme')
+                                        ]:
+                                            if term in obj:
+                                                st.write(f"- {label} : {obj[term]}")
+                                
+                                # Ajout pour l'export Excel
+                                if isinstance(datapoint.get('objectifs'), dict):
+                                    row_data = {
+                                        "Pilier": pilier_name,
+                                        "Enjeu": enjeu,
+                                        "Datapoint": datapoint.get('indicateur', ''),
+                                        "Type": datapoint.get('type', ''),
+                                        "Description Datapoint": datapoint.get('description', ''),
+                                        "Méthodologie": datapoint.get('methodologie', ''),
+                                        "Fréquence": datapoint.get('frequence', ''),
+                                        "Objectif CT": datapoint['objectifs'].get('court_terme', ''),
+                                        "Objectif MT": datapoint['objectifs'].get('moyen_terme', ''),
+                                        "Objectif LT": datapoint['objectifs'].get('long_terme', ''),
+                                        "Description Enjeu": details.get('description', ''),
+                                        "Impacts Positifs": ", ".join(details.get('impacts', {}).get('positifs', [])),
+                                        "Impacts Négatifs": ", ".join(details.get('impacts', {}).get('negatifs', [])),
+                                        "Risques": ", ".join(details.get('risques', {}).get('liste', [])),
+                                        "Niveau Risque": details.get('risques', {}).get('niveau', ''),
+                                        "Horizon Risque": details.get('risques', {}).get('horizon', ''),
+                                        "Mesures Atténuation": ", ".join(details.get('risques', {}).get('mesures_attenuation', [])),
+                                        "Opportunités": ", ".join(details.get('opportunites', {}).get('liste', [])),
+                                        "Potentiel Opportunité": details.get('opportunites', {}).get('potentiel', ''),
+                                        "Horizon Opportunité": details.get('opportunites', {}).get('horizon', ''),
+                                        "Actions Saisie": ", ".join(details.get('opportunites', {}).get('actions_saisie', []))
+                                    }
+                                    
+                                    rows.append(row_data)
+                        
+                        st.divider()
     
     # Export Excel
     if rows:
