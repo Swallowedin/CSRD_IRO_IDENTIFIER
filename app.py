@@ -46,7 +46,7 @@ class GPTInterface:
 
     def _create_prompt(self, context: dict) -> str:
         return f"""
-        Analysez ce profil d'entreprise selon les exigences CSRD et fournissez une analyse détaillée de chaque enjeu mentionné :
+        En tant qu'expert CSRD, analysez en détail ce profil d'entreprise et générez une analyse détaillée selon le format demandé.
 
         PROFIL DE L'ENTREPRISE:
         {context['company_description']}
@@ -65,45 +65,51 @@ class GPTInterface:
         Social: {context['priority_issues']['social']}
         Gouvernance: {context['priority_issues']['governance']}
 
-        Pour chaque enjeu mentionné, fournissez une analyse structurée exactement comme suit :
+        Pour chaque ENJEU MENTIONNÉ dans les textes ci-dessus, réalisez une analyse CSRD complète selon cette structure JSON exacte :
 
         {{
-            "environnement": {{
+            "nom_du_pilier": {{ // environnement, social, ou gouvernance
                 "nom_de_l_enjeu": {{
                     "description": "Description détaillée de l'enjeu",
                     "impacts": {{
                         "positifs": [
-                            "Liste des impacts positifs liés au modèle d'affaires"
+                            "Impact positif 1 lié au modèle d'affaires",
+                            "Impact positif 2 lié au modèle d'affaires"
                         ],
                         "negatifs": [
-                            "Liste des impacts négatifs liés au modèle d'affaires"
+                            "Impact négatif 1 lié au modèle d'affaires",
+                            "Impact négatif 2 lié au modèle d'affaires"
                         ]
                     }},
                     "risques": {{
                         "liste": [
-                            "Liste détaillée des risques identifiés"
+                            "Description risque 1",
+                            "Description risque 2"
                         ],
                         "niveau": "Élevé/Moyen/Faible",
                         "horizon": "Court/Moyen/Long terme",
                         "mesures_attenuation": [
-                            "Liste des mesures d'atténuation proposées"
+                            "Mesure 1 pour atténuer les risques",
+                            "Mesure 2 pour atténuer les risques"
                         ]
                     }},
                     "opportunites": {{
                         "liste": [
-                            "Liste détaillée des opportunités identifiées"
+                            "Description opportunité 1",
+                            "Description opportunité 2"
                         ],
                         "potentiel": "Élevé/Moyen/Faible",
                         "horizon": "Court/Moyen/Long terme",
                         "actions_saisie": [
-                            "Actions proposées pour saisir les opportunités"
+                            "Action 1 pour saisir l'opportunité",
+                            "Action 2 pour saisir l'opportunité"
                         ]
                     }},
                     "iros": [
                         {{
-                            "indicateur": "Nom de l'IRO",
-                            "description": "Description de l'indicateur",
-                            "methodologie": "Méthodologie de collecte et calcul",
+                            "indicateur": "Nom de l'IRO 1",
+                            "description": "Description détaillée de l'indicateur",
+                            "methodologie": "Comment collecter et calculer",
                             "frequence": "Fréquence de mesure",
                             "objectifs": {{
                                 "court_terme": "Objectif à 1 an",
@@ -113,14 +119,139 @@ class GPTInterface:
                         }}
                     ]
                 }}
-            }},
-            "social": {{
-                // même structure pour chaque enjeu social
-            }},
-            "gouvernance": {{
-                // même structure pour chaque enjeu de gouvernance
             }}
-        }}"""
+        }}
+
+        EXEMPLE CONCRET pour un enjeu :
+        {{
+            "environnement": {{
+                "emissions_ges": {{
+                    "description": "Gestion et réduction des émissions de gaz à effet de serre dans les opérations",
+                    "impacts": {{
+                        "positifs": [
+                            "Développement de solutions bas-carbone innovantes",
+                            "Amélioration de l'efficacité énergétique"
+                        ],
+                        "negatifs": [
+                            "Émissions directes liées aux activités de production",
+                            "Émissions indirectes de la chaîne logistique"
+                        ]
+                    }},
+                    "risques": {{
+                        "liste": [
+                            "Augmentation des coûts liés à la tarification carbone",
+                            "Perte de parts de marché face aux alternatives plus vertes"
+                        ],
+                        "niveau": "Élevé",
+                        "horizon": "Moyen terme",
+                        "mesures_attenuation": [
+                            "Programme de réduction des émissions",
+                            "Investissement dans les énergies renouvelables"
+                        ]
+                    }},
+                    "opportunites": {{
+                        "liste": [
+                            "Développement de produits éco-conçus",
+                            "Accès à de nouveaux marchés verts"
+                        ],
+                        "potentiel": "Élevé",
+                        "horizon": "Moyen terme",
+                        "actions_saisie": [
+                            "Programme R&D produits bas-carbone",
+                            "Certification environnementale"
+                        ]
+                    }},
+                    "iros": [
+                        {{
+                            "indicateur": "Intensité carbone par unité produite",
+                            "description": "Mesure des émissions de GES par unité de production",
+                            "methodologie": "Calcul selon GHG Protocol",
+                            "frequence": "Trimestrielle",
+                            "objectifs": {{
+                                "court_terme": "-10% en 1 an",
+                                "moyen_terme": "-30% en 3 ans",
+                                "long_terme": "-50% en 5 ans"
+                            }}
+                        }}
+                    ]
+                }}
+            }}
+        }}
+
+        IMPORTANT :
+        1. Analysez CHAQUE enjeu mentionné dans les textes fournis
+        2. Suivez EXACTEMENT la structure JSON donnée
+        3. Adaptez le contenu au contexte spécifique de l'entreprise
+        4. Soyez PRÉCIS et CONCRET dans les descriptions"""
+
+def company_profile_section():
+    """Section pour la description détaillée de l'entreprise"""
+    st.header("📋 Profil de l'entreprise")
+    
+    company_description = st.text_area(
+        "Description générale de l'entreprise",
+        height=150,
+        help="Décrivez votre entreprise en détail (taille, marchés, implantation géographique, etc.)"
+    )
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        industry_sector = st.text_area(
+            "Secteur d'activité",
+            height=100,
+            help="Décrivez votre secteur d'activité et ses spécificités"
+        )
+    
+    with col2:
+        business_model = st.text_area(
+            "Modèle d'affaires",
+            height=100,
+            help="Expliquez votre modèle d'affaires et sa chaîne de valeur"
+        )
+    
+    specific_features = st.text_area(
+        "Caractéristiques spécifiques",
+        height=150,
+        help="Détaillez les particularités qui distinguent votre entreprise (innovation, technologies, contraintes réglementaires, etc.)"
+    )
+    
+    return {
+        "company_description": company_description,
+        "industry_sector": industry_sector,
+        "business_model": business_model,
+        "specific_features": specific_features
+    }
+
+def priority_issues_section():
+    """Section pour identifier les enjeux prioritaires"""
+    st.header("🎯 Enjeux prioritaires")
+    
+    st.info("Identifiez et décrivez les enjeux ESG prioritaires pour votre entreprise")
+    
+    environmental_issues = st.text_area(
+        "Enjeux environnementaux",
+        height=100,
+        help="Décrivez les enjeux environnementaux spécifiques à votre activité"
+    )
+    
+    social_issues = st.text_area(
+        "Enjeux sociaux",
+        height=100,
+        help="Décrivez les enjeux sociaux et sociétaux pertinents"
+    )
+    
+    governance_issues = st.text_area(
+        "Enjeux de gouvernance",
+        height=100,
+        help="Décrivez les enjeux de gouvernance importants"
+    )
+    
+    return {
+        "environmental": environmental_issues,
+        "social": social_issues,
+        "governance": governance_issues
+    }
 
 def display_results(results: Dict):
     """Affiche les résultats de l'analyse avec la nouvelle structure"""
@@ -209,6 +340,7 @@ def display_results(results: Dict):
                                 "Horizon Opportunité": details['opportunites']['horizon']
                             })
     
+    
     # Export Excel
     if rows:
         df = pd.DataFrame(rows)
@@ -222,6 +354,13 @@ def display_results(results: Dict):
             file_name=f"analyse_csrd_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
+def initialize_session_state():
+    """Initialise les variables de session Streamlit"""
+    if 'gpt' not in st.session_state:
+        st.session_state.gpt = GPTInterface()
+    if 'results' not in st.session_state:
+        st.session_state.results = None
 
 def main():
     st.title("🎯 Analyseur CSRD - Identification des IRO")
