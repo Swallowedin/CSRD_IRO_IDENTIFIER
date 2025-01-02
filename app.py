@@ -263,82 +263,88 @@ def display_results(results: Dict):
     
     rows = []  # Pour l'export Excel
     
-    # Définition des icônes pour chaque pilier
+    # Définition des piliers
     pillars = {
         "environnement": "🌍 Environnement",
         "social": "👥 Social",
         "gouvernance": "⚖️ Gouvernance"
     }
     
-    for pilier_id, pilier_name in pillars.items():
+    # Création des tabs pour les piliers
+    tabs = st.tabs([name for _, name in pillars.items()])
+    
+    for (pilier_id, pilier_name), tab in zip(pillars.items(), tabs):
         if pilier_id in results:
-            with st.expander(pilier_name, expanded=True):
+            with tab:
                 for enjeu, details in results[pilier_id].items():
-                    with st.expander(f"Enjeu : {enjeu}", expanded=True):
-                        # Description
-                        st.markdown("### 📝 Description")
-                        st.write(details["description"])
+                    st.subheader(f"🎯 Enjeu : {enjeu}")
+                    
+                    # Description
+                    st.markdown("### 📝 Description")
+                    st.write(details["description"])
+                    
+                    # Impacts
+                    st.markdown("### 💫 Impacts")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown("#### ✅ Impacts positifs")
+                        for impact in details["impacts"]["positifs"]:
+                            st.write(f"- {impact}")
+                    with col2:
+                        st.markdown("#### ❌ Impacts négatifs")
+                        for impact in details["impacts"]["negatifs"]:
+                            st.write(f"- {impact}")
+                    
+                    # Risques
+                    st.markdown("### ⚠️ Risques")
+                    st.write(f"**Niveau de risque :** {details['risques']['niveau']}")
+                    st.write(f"**Horizon :** {details['risques']['horizon']}")
+                    for risque in details["risques"]["liste"]:
+                        st.write(f"- {risque}")
+                    st.markdown("#### 🛡️ Mesures d'atténuation")
+                    for mesure in details["risques"]["mesures_attenuation"]:
+                        st.write(f"- {mesure}")
+                    
+                    # Opportunités
+                    st.markdown("### 🎯 Opportunités")
+                    st.write(f"**Potentiel :** {details['opportunites']['potentiel']}")
+                    st.write(f"**Horizon :** {details['opportunites']['horizon']}")
+                    for opportunite in details["opportunites"]["liste"]:
+                        st.write(f"- {opportunite}")
+                    st.markdown("#### 🚀 Actions proposées")
+                    for action in details["opportunites"]["actions_saisie"]:
+                        st.write(f"- {action}")
+                    
+                    # IROs
+                    st.markdown("### 📊 Indicateurs de Résultat (IRO)")
+                    for iro in details["iros"]:
+                        st.markdown(f"#### 📌 {iro['indicateur']}")
+                        st.write(f"**Description :** {iro['description']}")
+                        st.write(f"**Méthodologie :** {iro['methodologie']}")
+                        st.write(f"**Fréquence :** {iro['frequence']}")
+                        st.markdown("**Objectifs :**")
+                        st.write(f"- Court terme : {iro['objectifs']['court_terme']}")
+                        st.write(f"- Moyen terme : {iro['objectifs']['moyen_terme']}")
+                        st.write(f"- Long terme : {iro['objectifs']['long_terme']}")
                         
-                        # Impacts
-                        st.markdown("### 💫 Impacts")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.markdown("#### ✅ Impacts positifs")
-                            for impact in details["impacts"]["positifs"]:
-                                st.write(f"- {impact}")
-                        with col2:
-                            st.markdown("#### ❌ Impacts négatifs")
-                            for impact in details["impacts"]["negatifs"]:
-                                st.write(f"- {impact}")
-                        
-                        # Risques
-                        st.markdown("### ⚠️ Risques")
-                        st.write(f"**Niveau de risque :** {details['risques']['niveau']}")
-                        st.write(f"**Horizon :** {details['risques']['horizon']}")
-                        for risque in details["risques"]["liste"]:
-                            st.write(f"- {risque}")
-                        st.markdown("#### 🛡️ Mesures d'atténuation")
-                        for mesure in details["risques"]["mesures_attenuation"]:
-                            st.write(f"- {mesure}")
-                        
-                        # Opportunités
-                        st.markdown("### 🎯 Opportunités")
-                        st.write(f"**Potentiel :** {details['opportunites']['potentiel']}")
-                        st.write(f"**Horizon :** {details['opportunites']['horizon']}")
-                        for opportunite in details["opportunites"]["liste"]:
-                            st.write(f"- {opportunite}")
-                        st.markdown("#### 🚀 Actions proposées")
-                        for action in details["opportunites"]["actions_saisie"]:
-                            st.write(f"- {action}")
-                        
-                        # IROs
-                        st.markdown("### 📊 Indicateurs de Résultat (IRO)")
-                        for iro in details["iros"]:
-                            with st.expander(f"📌 {iro['indicateur']}"):
-                                st.write(f"**Description :** {iro['description']}")
-                                st.write(f"**Méthodologie :** {iro['methodologie']}")
-                                st.write(f"**Fréquence :** {iro['frequence']}")
-                                st.markdown("**Objectifs :**")
-                                st.write(f"- Court terme : {iro['objectifs']['court_terme']}")
-                                st.write(f"- Moyen terme : {iro['objectifs']['moyen_terme']}")
-                                st.write(f"- Long terme : {iro['objectifs']['long_terme']}")
-                            
-                            # Ajout pour l'export Excel
-                            rows.append({
-                                "Pilier": pilier_name,
-                                "Enjeu": enjeu,
-                                "IRO": iro['indicateur'],
-                                "Description IRO": iro['description'],
-                                "Méthodologie": iro['methodologie'],
-                                "Fréquence": iro['frequence'],
-                                "Objectif CT": iro['objectifs']['court_terme'],
-                                "Objectif MT": iro['objectifs']['moyen_terme'],
-                                "Objectif LT": iro['objectifs']['long_terme'],
-                                "Niveau Risque": details['risques']['niveau'],
-                                "Horizon Risque": details['risques']['horizon'],
-                                "Potentiel Opportunité": details['opportunites']['potentiel'],
-                                "Horizon Opportunité": details['opportunites']['horizon']
-                            })
+                        # Ajout pour l'export Excel
+                        rows.append({
+                            "Pilier": pilier_name,
+                            "Enjeu": enjeu,
+                            "IRO": iro['indicateur'],
+                            "Description IRO": iro['description'],
+                            "Méthodologie": iro['methodologie'],
+                            "Fréquence": iro['frequence'],
+                            "Objectif CT": iro['objectifs']['court_terme'],
+                            "Objectif MT": iro['objectifs']['moyen_terme'],
+                            "Objectif LT": iro['objectifs']['long_terme'],
+                            "Niveau Risque": details['risques']['niveau'],
+                            "Horizon Risque": details['risques']['horizon'],
+                            "Potentiel Opportunité": details['opportunites']['potentiel'],
+                            "Horizon Opportunité": details['opportunites']['horizon']
+                        })
+                    
+                    st.divider()
     
     # Export Excel
     if rows:
