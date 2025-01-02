@@ -242,60 +242,84 @@ class GPTInterface:
                     "description": "Description détaillée de l'enjeu",
                     "impacts": {{
                         "positifs": [
-                            "impact1",
-                            "impact2",
-                            "impact3",
-                            "impact4",
-                            "impact5",
-                            "...jusqu'à 10 impacts positifs pertinents"
+                            "Premier impact positif détaillé",
+                            "Deuxième impact positif détaillé",
+                            "Troisième impact positif détaillé",
+                            "Quatrième impact positif détaillé",
+                            "Cinquième impact positif détaillé",
+                            "Sixième impact positif si pertinent",
+                            "Septième impact positif si pertinent",
+                            "Huitième impact positif si pertinent",
+                            "Neuvième impact positif si pertinent",
+                            "Dixième impact positif si pertinent"
                         ],
                         "negatifs": [
-                            "impact1",
-                            "impact2",
-                            "impact3",
-                            "impact4",
-                            "impact5",
-                            "...jusqu'à 10 impacts négatifs pertinents"
+                            "Premier impact négatif détaillé",
+                            "Deuxième impact négatif détaillé",
+                            "Troisième impact négatif détaillé",
+                            "Quatrième impact négatif détaillé",
+                            "Cinquième impact négatif détaillé",
+                            "Sixième impact négatif si pertinent",
+                            "Septième impact négatif si pertinent",
+                            "Huitième impact négatif si pertinent",
+                            "Neuvième impact négatif si pertinent",
+                            "Dixième impact négatif si pertinent"
                         ]
                     }},
                     "risques": {{
                         "liste": [
-                            "risque1",
-                            "risque2",
-                            "risque3",
-                            "risque4",
-                            "risque5",
-                            "...jusqu'à 10 risques pertinents"
+                            "Premier risque identifié et détaillé",
+                            "Deuxième risque identifié et détaillé",
+                            "Troisième risque identifié et détaillé",
+                            "Quatrième risque identifié et détaillé",
+                            "Cinquième risque identifié et détaillé",
+                            "Sixième risque si pertinent",
+                            "Septième risque si pertinent",
+                            "Huitième risque si pertinent",
+                            "Neuvième risque si pertinent",
+                            "Dixième risque si pertinent"
                         ],
                         "niveau": "Élevé/Moyen/Faible",
                         "horizon": "Court/Moyen/Long terme",
                         "mesures_attenuation": [
-                            "mesure1",
-                            "mesure2",
-                            "mesure3",
-                            "mesure4",
-                            "mesure5",
-                            "...jusqu'à 10 mesures pertinentes"
+                            "Première mesure d'atténuation détaillée",
+                            "Deuxième mesure d'atténuation détaillée",
+                            "Troisième mesure d'atténuation détaillée",
+                            "Quatrième mesure d'atténuation détaillée",
+                            "Cinquième mesure d'atténuation détaillée",
+                            "Sixième mesure si pertinente",
+                            "Septième mesure si pertinente",
+                            "Huitième mesure si pertinente",
+                            "Neuvième mesure si pertinente",
+                            "Dixième mesure si pertinente"
                         ]
                     }},
                     "opportunites": {{
                         "liste": [
-                            "opportunité1",
-                            "opportunité2",
-                            "opportunité3",
-                            "opportunité4",
-                            "opportunité5",
-                            "...jusqu'à 10 opportunités pertinentes"
+                            "Première opportunité identifiée et détaillée",
+                            "Deuxième opportunité identifiée et détaillée",
+                            "Troisième opportunité identifiée et détaillée",
+                            "Quatrième opportunité identifiée et détaillée",
+                            "Cinquième opportunité identifiée et détaillée",
+                            "Sixième opportunité si pertinente",
+                            "Septième opportunité si pertinente",
+                            "Huitième opportunité si pertinente",
+                            "Neuvième opportunité si pertinente",
+                            "Dixième opportunité si pertinente"
                         ],
                         "potentiel": "Élevé/Moyen/Faible",
                         "horizon": "Court/Moyen/Long terme",
                         "actions_saisie": [
-                            "action1",
-                            "action2",
-                            "action3",
-                            "action4",
-                            "action5",
-                            "...jusqu'à 10 actions pertinentes"
+                            "Première action proposée et détaillée",
+                            "Deuxième action proposée et détaillée",
+                            "Troisième action proposée et détaillée",
+                            "Quatrième action proposée et détaillée",
+                            "Cinquième action proposée et détaillée",
+                            "Sixième action si pertinente",
+                            "Septième action si pertinente",
+                            "Huitième action si pertinente",
+                            "Neuvième action si pertinente",
+                            "Dixième action si pertinente"
                         ]
                     }},
                     "datapoints_csrd": [
