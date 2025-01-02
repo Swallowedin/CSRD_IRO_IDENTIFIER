@@ -340,7 +340,6 @@ def display_results(results: Dict):
                                 "Horizon Opportunité": details['opportunites']['horizon']
                             })
     
-    
     # Export Excel
     if rows:
         df = pd.DataFrame(rows)
