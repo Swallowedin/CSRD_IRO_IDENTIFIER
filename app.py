@@ -117,17 +117,31 @@ class GPTInterface:
                 response = self.client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'analyse des impacts, risques et opportunités (IRO).
-                        Pour chaque enjeu identifié, vous devez analyser ses impacts, risques et opportunités, ainsi que suggérer des datapoints pertinents selon les exigences CSRD.
-                        
-                        RÈGLES IMPORTANTES:
-                        1. Vous DEVEZ traiter TOUS les enjeux mentionnés, sans exception
-                        2. Respectez STRICTEMENT le format JSON demandé
-                        3. Pour chaque enjeu, identifiez tous les datapoints (points de données) CSRD pertinents (KPIs quantitatifs ou textes narratifs argumentés) et indiquez le paragraphe de la CSRD auquel il correspond
-                        4. Ne limitez pas le nombre d'enjeux traités"""},
+                        {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'analyse exhaustive des impacts, risques et opportunités (IRO).
+
+INSTRUCTIONS CRITIQUES POUR LES IRO:
+- Pour CHAQUE enjeu, vous DEVEZ identifier entre 5 et 10 éléments dans CHACUNE des catégories suivantes :
+  * Impacts positifs (minimum 5)
+  * Impacts négatifs (minimum 5)
+  * Risques identifiés (minimum 5)
+  * Opportunités (minimum 5)
+  * Mesures d'atténuation (minimum 5)
+  * Actions de saisie d'opportunités (minimum 5)
+
+- Il est STRICTEMENT INTERDIT de limiter à 2 ou 3 éléments par catégorie
+- Plus l'enjeu est important, plus le nombre d'éléments identifiés doit être proche de 10
+- Chaque élément doit être unique et pertinent pour l'enjeu analysé
+- Les éléments doivent être détaillés et contextualisés
+
+INSTRUCTIONS POUR LES DATAPOINTS:
+- Identifiez tous les datapoints CSRD pertinents
+- Citez systématiquement les paragraphes de la CSRD correspondants
+- Incluez à la fois des KPIs quantitatifs et des exigences narratives"""},
                         {"role": "user", "content": prompt}
                     ],
-                    response_format={"type": "json_object"}
+                    response_format={"type": "json_object"},
+                    temperature=0.7,
+                    max_tokens=4000
                 )
 
                 raw_content = response.choices[0].message.content
@@ -148,20 +162,25 @@ class GPTInterface:
                         st.code(raw_content)
                         return {}
 
-                # Validation de base de la structure
-                if not isinstance(result, dict):
-                    st.error("Le format de réponse n'est pas un dictionnaire JSON valide")
-                    return {}
+                # Validation du nombre d'éléments par catégorie
+                for pilier, enjeux in result.items():
+                    for enjeu, details in enjeux.items():
+                        for categorie in ['impacts', 'risques', 'opportunites']:
+                            if categorie == 'impacts':
+                                for type_impact in ['positifs', 'negatifs']:
+                                    if len(details.get(categorie, {}).get(type_impact, [])) < 5:
+                                        st.warning(f"Attention: Nombre insuffisant d'{type_impact} pour l'enjeu {enjeu}")
+                            elif categorie == 'risques':
+                                if len(details.get(categorie, {}).get('liste', [])) < 5:
+                                    st.warning(f"Attention: Nombre insuffisant de risques pour l'enjeu {enjeu}")
+                                if len(details.get(categorie, {}).get('mesures_attenuation', [])) < 5:
+                                    st.warning(f"Attention: Nombre insuffisant de mesures d'atténuation pour l'enjeu {enjeu}")
+                            elif categorie == 'opportunites':
+                                if len(details.get(categorie, {}).get('liste', [])) < 5:
+                                    st.warning(f"Attention: Nombre insuffisant d'opportunités pour l'enjeu {enjeu}")
+                                if len(details.get(categorie, {}).get('actions_saisie', [])) < 5:
+                                    st.warning(f"Attention: Nombre insuffisant d'actions pour l'enjeu {enjeu}")
 
-                # Vérification de la présence des piliers ESG
-                expected_pillars = {"environnement", "social", "gouvernance"}
-                missing_pillars = expected_pillars - set(result.keys())
-                if missing_pillars:
-                    st.warning(f"Piliers manquants dans la réponse: {', '.join(missing_pillars)}")
-                    # Création des piliers manquants
-                    for pillar in missing_pillars:
-                        result[pillar] = {}
-                
                 return result
 
             except Exception as e:
@@ -176,7 +195,7 @@ class GPTInterface:
         """Crée le prompt pour l'analyse CSRD"""
         return f"""
         En tant qu'expert CSRD, analysez TOUS les enjeux mentionnés dans les textes fournis.
-        Pour CHAQUE enjeu mentionné, vous devez fournir une analyse complète des impacts, risques et opportunités en vous limitant à un nombre de 10 impacts positifs, 10 impacts négatifs, 10 risques et 10 opportunités.
+        Pour CHAQUE enjeu mentionné, vous devez fournir une analyse complète des impacts, risques et opportunités.
 
         PROFIL DE L'ENTREPRISE:
         {context['company_description']}
@@ -203,25 +222,68 @@ class GPTInterface:
                 "nom_enjeu_1": {{
                     "description": "Description détaillée de l'enjeu",
                     "impacts": {{
-                        "positifs": ["impact1", "impact2", "...", "impactN"],
-                        "negatifs": ["impact1", "impact2", "...", "impactN"]
+                        "positifs": [
+                            "impact1",
+                            "impact2",
+                            "impact3",
+                            "impact4",
+                            "impact5",
+                            "...jusqu'à 10 impacts positifs pertinents"
+                        ],
+                        "negatifs": [
+                            "impact1",
+                            "impact2",
+                            "impact3",
+                            "impact4",
+                            "impact5",
+                            "...jusqu'à 10 impacts négatifs pertinents"
+                        ]
                     }},
                     "risques": {{
-                        "liste": ["risque1", "risque2", "...", "risqueN"],
+                        "liste": [
+                            "risque1",
+                            "risque2",
+                            "risque3",
+                            "risque4",
+                            "risque5",
+                            "...jusqu'à 10 risques pertinents"
+                        ],
                         "niveau": "Élevé/Moyen/Faible",
                         "horizon": "Court/Moyen/Long terme",
-                        "mesures_attenuation": ["mesure1", "mesure2", "...", "mesureN"]
+                        "mesures_attenuation": [
+                            "mesure1",
+                            "mesure2",
+                            "mesure3",
+                            "mesure4",
+                            "mesure5",
+                            "...jusqu'à 10 mesures pertinentes"
+                        ]
                     }},
                     "opportunites": {{
-                        "liste": ["opportunité1", "opportunité2", "...", "opportunitéN"],
+                        "liste": [
+                            "opportunité1",
+                            "opportunité2",
+                            "opportunité3",
+                            "opportunité4",
+                            "opportunité5",
+                            "...jusqu'à 10 opportunités pertinentes"
+                        ],
                         "potentiel": "Élevé/Moyen/Faible",
                         "horizon": "Court/Moyen/Long terme",
-                        "actions_saisie": ["action1", "action2", "...", "actionN"]
+                        "actions_saisie": [
+                            "action1",
+                            "action2",
+                            "action3",
+                            "action4",
+                            "action5",
+                            "...jusqu'à 10 actions pertinentes"
+                        ]
                     }},
                     "datapoints_csrd": [
                         {{
                             "indicateur": "Nom du datapoint",
-                            "type": "KPI/Justification",
+                            "type": "KPI quantitatif ou texte narratif",
+                            "reference_csrd": "Paragraphe CSRD correspondant",
                             "description": "Description du datapoint",
                             "methodologie": "Méthodologie de collecte/calcul",
                             "frequence": "Fréquence de mesure",
@@ -240,12 +302,11 @@ class GPTInterface:
 
         ATTENTION:
         - Vous DEVEZ traiter ABSOLUMENT TOUS les enjeux mentionnés
-        - Pour chaque enjeu, identifiez entre 2 et 10 impacts positifs, 2 et 10 impacts négatifs, 2 et 10 risques et 2 et 10 opportunités selon leur pertinence
-        - Le nombre d'éléments doit être adapté à l'importance et à la complexité de chaque enjeu
-        - Suggérez tous les datapoints CSRD appropriés en citant le paragraphe de référence de la CSRD (KPIs quantitatifs ou textes narratifs argumentés)
-        - Adaptez chaque analyse au contexte spécifique de l'entreprise
+        - Pour chaque enjeu, fournissez AU MINIMUM 5 éléments pour chaque liste (impacts, risques, opportunités)
+        - Le nombre d'éléments doit être adapté à l'importance de l'enjeu (jusqu'à 10 par catégorie)
+        - Chaque élément doit être unique et pertinent pour l'enjeu
+        - Citez les paragraphes CSRD pour chaque datapoint
         - Ne limitez PAS le nombre d'enjeux traités
-        - Ne limitez pas le nombre d'impacts, risque et opportunités identifié (sauf s'il dépasse 10 pour l'un de ces catégories)
         - Assurez-vous que la réponse est un JSON valide et complet
         """
 
