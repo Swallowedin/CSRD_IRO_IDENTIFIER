@@ -123,7 +123,7 @@ class GPTInterface:
                         RÈGLES IMPORTANTES:
                         1. Vous DEVEZ traiter TOUS les enjeux mentionnés, sans exception
                         2. Respectez STRICTEMENT le format JSON demandé
-                        3. Pour chaque enjeu, identifiez les datapoints CSRD pertinents (KPIs ou justifications argumentées)
+                        3. Pour chaque enjeu, identifiez tous les datapoints (points de données) CSRD pertinents (KPIs quantitatifs ou textes narratifs argumentés) et indiquez le paragraphe de la CSRD auquel il correspond
                         4. Ne limitez pas le nombre d'enjeux traités"""},
                         {"role": "user", "content": prompt}
                     ],
@@ -176,7 +176,7 @@ class GPTInterface:
         """Crée le prompt pour l'analyse CSRD"""
         return f"""
         En tant qu'expert CSRD, analysez TOUS les enjeux mentionnés dans les textes fournis.
-        Pour CHAQUE enjeu mentionné, vous devez fournir une analyse complète des impacts, risques et opportunités.
+        Pour CHAQUE enjeu mentionné, vous devez fournir une analyse complète des impacts, risques et opportunités en vous limitant à un nombre de 10 impacts positifs, 10 impacts négatifs, 10 risques et 10 opportunités.
 
         PROFIL DE L'ENTREPRISE:
         {context['company_description']}
@@ -240,11 +240,12 @@ class GPTInterface:
 
         ATTENTION:
         - Vous DEVEZ traiter ABSOLUMENT TOUS les enjeux mentionnés
-        - Pour chaque enjeu, identifiez entre 2 et 10 impacts, risques et opportunités selon leur pertinence
+        - Pour chaque enjeu, identifiez entre 2 et 10 impacts positifs, 2 et 10 impacts négatifs, 2 et 10 risques et 2 et 10 opportunités selon leur pertinence
         - Le nombre d'éléments doit être adapté à l'importance et à la complexité de chaque enjeu
-        - Suggérez des datapoints CSRD appropriés (KPIs ou justifications argumentées)
+        - Suggérez tous les datapoints CSRD appropriés en citant le paragraphe de référence de la CSRD (KPIs quantitatifs ou textes narratifs argumentés)
         - Adaptez chaque analyse au contexte spécifique de l'entreprise
         - Ne limitez PAS le nombre d'enjeux traités
+        - Ne limitez pas le nombre d'impacts, risque et opportunités identifié (sauf s'il dépasse 10 pour l'un de ces catégories)
         - Assurez-vous que la réponse est un JSON valide et complet
         """
 
