@@ -14,22 +14,6 @@ st.set_page_config(
     layout="wide"
 )
 
-import streamlit as st
-from typing import Dict, List
-import json
-from openai import OpenAI
-import pandas as pd
-from datetime import datetime
-import io
-import time
-
-# Configuration de la page
-st.set_page_config(
-    page_title="Analyseur CSRD - IRO",
-    page_icon="📊",
-    layout="wide"
-)
-
 class GPTInterface:
     """Interface avec l'API GPT pour l'analyse CSRD"""
     
