@@ -203,20 +203,20 @@ class GPTInterface:
                 "nom_enjeu_1": {{
                     "description": "Description détaillée de l'enjeu",
                     "impacts": {{
-                        "positifs": ["impact1", "impact2"],
-                        "negatifs": ["impact1", "impact2"]
+                        "positifs": ["impact1", "impact2", "...", "impactN"],
+                        "negatifs": ["impact1", "impact2", "...", "impactN"]
                     }},
                     "risques": {{
-                        "liste": ["risque1", "risque2"],
+                        "liste": ["risque1", "risque2", "...", "risqueN"],
                         "niveau": "Élevé/Moyen/Faible",
                         "horizon": "Court/Moyen/Long terme",
-                        "mesures_attenuation": ["mesure1", "mesure2"]
+                        "mesures_attenuation": ["mesure1", "mesure2", "...", "mesureN"]
                     }},
                     "opportunites": {{
-                        "liste": ["opportunité1", "opportunité2"],
+                        "liste": ["opportunité1", "opportunité2", "...", "opportunitéN"],
                         "potentiel": "Élevé/Moyen/Faible",
                         "horizon": "Court/Moyen/Long terme",
-                        "actions_saisie": ["action1", "action2"]
+                        "actions_saisie": ["action1", "action2", "...", "actionN"]
                     }},
                     "datapoints_csrd": [
                         {{
@@ -240,7 +240,8 @@ class GPTInterface:
 
         ATTENTION:
         - Vous DEVEZ traiter ABSOLUMENT TOUS les enjeux mentionnés
-        - Pour chaque enjeu, identifiez les impacts, risques et opportunités pertinents
+        - Pour chaque enjeu, identifiez entre 2 et 10 impacts, risques et opportunités selon leur pertinence
+        - Le nombre d'éléments doit être adapté à l'importance et à la complexité de chaque enjeu
         - Suggérez des datapoints CSRD appropriés (KPIs ou justifications argumentées)
         - Adaptez chaque analyse au contexte spécifique de l'entreprise
         - Ne limitez PAS le nombre d'enjeux traités
