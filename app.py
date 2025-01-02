@@ -31,33 +31,50 @@ class GPTInterface:
         prompt = self._create_prompt(context)
         
         with st.spinner('Analyse en cours et génération des IRO...'):
-            progress_bar = st.progress(0)
             try:
-                # Simulation de progression
-                for i in range(100):
-                    time.sleep(0.02)
-                    progress_bar.progress(i + 1)
-
                 response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4-turbo-preview",  # Utilisation du modèle le plus récent
                     messages=[
                         {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'identification des IRO. 
-                        Votre rôle est d'analyser en profondeur chaque enjeu mentionné et de fournir une analyse CSRD complète.
-                        Les IRO (Indicateurs de Résultat Obligatoires) sont des indicateurs CSRD spécifiques, distincts des KPIs classiques."""},
+                        Votre rôle est d'analyser en profondeur TOUS les enjeux mentionnés et de fournir une analyse CSRD complète.
+                        Les IRO (Indicateurs de Résultat Obligatoires) sont des indicateurs CSRD spécifiques, distincts des KPIs classiques.
+                        
+                        RÈGLES IMPORTANTES:
+                        1. Vous DEVEZ traiter TOUS les enjeux mentionnés, sans exception
+                        2. Respectez STRICTEMENT le format JSON demandé
+                        3. Chaque IRO doit être un objet JSON valide avec TOUS les champs requis
+                        4. Ne limitez pas le nombre d'enjeux traités"""},
                         {"role": "user", "content": prompt}
                     ],
+                    temperature=0.7,  # Augmentation légère de la créativité
+                    max_tokens=4000,  # Augmentation de la limite de tokens
                     response_format={"type": "json_object"}
                 )
-                return json.loads(response.choices[0].message.content)
+                
+                result = json.loads(response.choices[0].message.content)
+                
+                # Validation basique du format
+                if not isinstance(result, dict):
+                    raise ValueError("Le format de réponse n'est pas un dictionnaire JSON valide")
+                
+                for pilier, enjeux in result.items():
+                    if not isinstance(enjeux, dict):
+                        raise ValueError(f"Les enjeux du pilier {pilier} ne sont pas au bon format")
+                        
+                    for enjeu, details in enjeux.items():
+                        if not isinstance(details.get('iros', []), list):
+                            raise ValueError(f"Les IROs de l'enjeu {enjeu} ne sont pas au bon format")
+                
+                return result
+                
             except Exception as e:
                 st.error(f"Erreur lors de la génération des IRO: {str(e)}")
                 return {}
-            finally:
-                progress_bar.empty()
 
     def _create_prompt(self, context: dict) -> str:
         return f"""
-        En tant qu'expert CSRD, analysez CHAQUE enjeu mentionné dans les textes fournis. Pour chaque enjeu, vous devez fournir une analyse détaillée.
+        En tant qu'expert CSRD, analysez TOUS les enjeux mentionnés dans les textes fournis.
+        Pour CHAQUE enjeu mentionné, vous devez fournir une analyse détaillée et complète.
 
         PROFIL DE L'ENTREPRISE:
         {context['company_description']}
@@ -71,71 +88,58 @@ class GPTInterface:
         CARACTÉRISTIQUES SPÉCIFIQUES:
         {context['specific_features']}
 
-        ENJEUX À ANALYSER:
+        ENJEUX À ANALYSER EN DÉTAIL:
+        [IMPORTANT: Analyser TOUS les enjeux mentionnés ci-dessous]
+        
         Environnement: {context['priority_issues']['environmental']}
         Social: {context['priority_issues']['social']}
         Gouvernance: {context['priority_issues']['governance']}
 
-        CONSIGNES IMPORTANTES:
-        1. Identifiez et traitez SÉPARÉMENT CHAQUE enjeu mentionné dans les textes
-        2. Les IRO (Indicateurs de Résultat Obligatoires) sont des indicateurs CSRD spécifiques, distincts des KPIs classiques
-        3. Pour CHAQUE enjeu identifié, fournissez l'analyse complète suivante:
-
-        Format JSON à respecter strictement:
+        Format JSON STRICT à respecter:
         {{
-            "nom_du_pilier": {{ // environnement, social, ou gouvernance
-                "nom_de_l_enjeu": {{
-                    "description": "Description détaillée de cet enjeu spécifique",
+            "environnement": {{
+                "nom_enjeu_1": {{
+                    "description": "Description détaillée",
                     "impacts": {{
-                        "positifs": [
-                            "Liste exhaustive des impacts positifs identifiés"
-                        ],
-                        "negatifs": [
-                            "Liste exhaustive des impacts négatifs identifiés"
-                        ]
+                        "positifs": ["impact1", "impact2"],
+                        "negatifs": ["impact1", "impact2"]
                     }},
                     "risques": {{
-                        "liste": [
-                            "Description détaillée de chaque risque identifié"
-                        ],
+                        "liste": ["risque1", "risque2"],
                         "niveau": "Élevé/Moyen/Faible",
                         "horizon": "Court/Moyen/Long terme",
-                        "mesures_attenuation": [
-                            "Actions concrètes pour atténuer chaque risque"
-                        ]
+                        "mesures_attenuation": ["mesure1", "mesure2"]
                     }},
                     "opportunites": {{
-                        "liste": [
-                            "Description détaillée de chaque opportunité"
-                        ],
+                        "liste": ["opportunité1", "opportunité2"],
                         "potentiel": "Élevé/Moyen/Faible",
                         "horizon": "Court/Moyen/Long terme",
-                        "actions_saisie": [
-                            "Actions concrètes pour saisir chaque opportunité"
-                        ]
+                        "actions_saisie": ["action1", "action2"]
                     }},
                     "iros": [
                         {{
-                            "indicateur": "Nom de l'IRO CSRD",
-                            "description": "Description complète de l'IRO",
-                            "methodologie": "Méthodologie de collecte et calcul",
-                            "frequence": "Fréquence de mesure",
+                            "indicateur": "Nom IRO",
+                            "description": "Description IRO",
+                            "methodologie": "Méthodologie",
+                            "frequence": "Fréquence",
                             "objectifs": {{
-                                "court_terme": "Objectif à 1 an",
-                                "moyen_terme": "Objectif à 3 ans",
-                                "long_terme": "Objectif à 5 ans"
+                                "court_terme": "Objectif 1 an",
+                                "moyen_terme": "Objectif 3 ans",
+                                "long_terme": "Objectif 5 ans"
                             }}
                         }}
                     ]
                 }}
-            }}
+            }},
+            "social": {{ ... }},
+            "gouvernance": {{ ... }}
         }}
 
         ATTENTION:
-        - Traitez TOUS les enjeux mentionnés, pas uniquement les premiers
-        - Les IRO doivent être des indicateurs CSRD spécifiques, pas des KPIs génériques
+        - Vous DEVEZ traiter ABSOLUMENT TOUS les enjeux mentionnés
+        - Chaque IRO doit être un objet JSON COMPLET avec TOUS les champs
         - Adaptez chaque analyse au contexte spécifique de l'entreprise
-        - Soyez précis et exhaustif dans les descriptions et mesures proposées
+        - Soyez exhaustif dans l'analyse de chaque enjeu
         """
 
 def company_profile_section():
