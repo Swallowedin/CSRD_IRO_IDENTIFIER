@@ -14,17 +14,64 @@ st.set_page_config(
 )
 
 class GPTInterface:
-    """Interface avec l'API GPT"""
-    def __init__(self):
-        try:
-            self.api_key = st.secrets["OPENAI_API_KEY"]
-        except KeyError:
-            st.error("❌ Clé API OpenAI non trouvée dans les secrets Streamlit.")
-            st.info("💡 Ajoutez votre clé API dans les secrets Streamlit avec la clé 'OPENAI_API_KEY'")
-            st.stop()
-            
-        self.client = OpenAI(api_key=self.api_key)
+    def _create_prompt(self, context: dict) -> str:
+        return f"""
+        Analysez en profondeur le profil d'entreprise suivant selon les exigences CSRD :
 
+        PROFIL DE L'ENTREPRISE:
+        {context['company_description']}
+
+        SECTEUR D'ACTIVITÉ:
+        {context['industry_sector']}
+
+        MODÈLE D'AFFAIRES:
+        {context['business_model']}
+
+        CARACTÉRISTIQUES SPÉCIFIQUES:
+        {context['specific_features']}
+
+        ENJEUX IDENTIFIÉS:
+        Environnement: {context['priority_issues']['environmental']}
+        Social: {context['priority_issues']['social']}
+        Gouvernance: {context['priority_issues']['governance']}
+
+        Pour chaque enjeu mentionné dans chaque pilier ESG, fournissez une analyse CSRD complète sous format JSON avec la structure suivante:
+
+        {{
+            "environnement": {{
+                "enjeu_1": {{
+                    "description": "Description détaillée de l'enjeu",
+                    "impacts": {{
+                        "positifs": ["Liste détaillée des impacts positifs liés au modèle d'affaires"],
+                        "negatifs": ["Liste détaillée des impacts négatifs liés au modèle d'affaires"]
+                    }},
+                    "risques": {{
+                        "description": ["Description détaillée des risques identifiés"],
+                        "niveau": "Élevé/Moyen/Faible",
+                        "horizon": "Court/Moyen/Long terme"
+                    }},
+                    "opportunites": {{
+                        "description": ["Description détaillée des opportunités identifiées"],
+                        "potentiel": "Élevé/Moyen/Faible",
+                        "horizon": "Court/Moyen/Long terme"
+                    }},
+                    "iros": {{
+                        "indicateurs": ["Liste des IRO pertinents"],
+                        "methodologie": "Méthodologie de collecte et de calcul",
+                        "frequence": "Fréquence de mesure recommandée"
+                    }}
+                }}
+            }},
+            "social": {{
+                // même structure pour chaque enjeu social
+            }},
+            "gouvernance": {{
+                // même structure pour chaque enjeu de gouvernance
+            }}
+        }}
+
+        Assurez-vous d'identifier et d'analyser TOUS les enjeux mentionnés dans chaque pilier ESG.
+        L'analyse doit être détaillée, pratique et directement applicable."""
     def generate_iros(self, context: dict) -> dict:
         """Génère des IRO via GPT"""
         prompt = self._create_prompt(context)
