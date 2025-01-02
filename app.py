@@ -14,9 +14,39 @@ st.set_page_config(
 )
 
 class GPTInterface:
+    """Interface avec l'API GPT"""
+    def __init__(self):
+        try:
+            self.api_key = st.secrets["OPENAI_API_KEY"]
+        except KeyError:
+            st.error("❌ Clé API OpenAI non trouvée dans les secrets Streamlit.")
+            st.info("💡 Ajoutez votre clé API dans les secrets Streamlit avec la clé 'OPENAI_API_KEY'")
+            st.stop()
+            
+        self.client = OpenAI(api_key=self.api_key)
+
+    def generate_iros(self, context: dict) -> dict:
+        """Génère des IRO via GPT"""
+        prompt = self._create_prompt(context)
+        
+        with st.spinner('Analyse en cours et génération des IRO...'):
+            try:
+                response = self.client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "Vous êtes un expert en reporting CSRD spécialisé dans l'identification des IRO. Analysez en profondeur chaque enjeu mentionné pour fournir une analyse CSRD complète."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    response_format={"type": "json_object"}
+                )
+                return json.loads(response.choices[0].message.content)
+            except Exception as e:
+                st.error(f"Erreur lors de la génération des IRO: {str(e)}")
+                return {}
+
     def _create_prompt(self, context: dict) -> str:
         return f"""
-        Analysez en profondeur le profil d'entreprise suivant selon les exigences CSRD :
+        Analysez ce profil d'entreprise selon les exigences CSRD et fournissez une analyse détaillée de chaque enjeu mentionné :
 
         PROFIL DE L'ENTREPRISE:
         {context['company_description']}
@@ -35,31 +65,53 @@ class GPTInterface:
         Social: {context['priority_issues']['social']}
         Gouvernance: {context['priority_issues']['governance']}
 
-        Pour chaque enjeu mentionné dans chaque pilier ESG, fournissez une analyse CSRD complète sous format JSON avec la structure suivante:
+        Pour chaque enjeu mentionné, fournissez une analyse structurée exactement comme suit :
 
         {{
             "environnement": {{
-                "enjeu_1": {{
+                "nom_de_l_enjeu": {{
                     "description": "Description détaillée de l'enjeu",
                     "impacts": {{
-                        "positifs": ["Liste détaillée des impacts positifs liés au modèle d'affaires"],
-                        "negatifs": ["Liste détaillée des impacts négatifs liés au modèle d'affaires"]
+                        "positifs": [
+                            "Liste des impacts positifs liés au modèle d'affaires"
+                        ],
+                        "negatifs": [
+                            "Liste des impacts négatifs liés au modèle d'affaires"
+                        ]
                     }},
                     "risques": {{
-                        "description": ["Description détaillée des risques identifiés"],
+                        "liste": [
+                            "Liste détaillée des risques identifiés"
+                        ],
                         "niveau": "Élevé/Moyen/Faible",
-                        "horizon": "Court/Moyen/Long terme"
+                        "horizon": "Court/Moyen/Long terme",
+                        "mesures_attenuation": [
+                            "Liste des mesures d'atténuation proposées"
+                        ]
                     }},
                     "opportunites": {{
-                        "description": ["Description détaillée des opportunités identifiées"],
+                        "liste": [
+                            "Liste détaillée des opportunités identifiées"
+                        ],
                         "potentiel": "Élevé/Moyen/Faible",
-                        "horizon": "Court/Moyen/Long terme"
+                        "horizon": "Court/Moyen/Long terme",
+                        "actions_saisie": [
+                            "Actions proposées pour saisir les opportunités"
+                        ]
                     }},
-                    "iros": {{
-                        "indicateurs": ["Liste des IRO pertinents"],
-                        "methodologie": "Méthodologie de collecte et de calcul",
-                        "frequence": "Fréquence de mesure recommandée"
-                    }}
+                    "iros": [
+                        {{
+                            "indicateur": "Nom de l'IRO",
+                            "description": "Description de l'indicateur",
+                            "methodologie": "Méthodologie de collecte et calcul",
+                            "frequence": "Fréquence de mesure",
+                            "objectifs": {{
+                                "court_terme": "Objectif à 1 an",
+                                "moyen_terme": "Objectif à 3 ans",
+                                "long_terme": "Objectif à 5 ans"
+                            }}
+                        }}
+                    ]
                 }}
             }},
             "social": {{
@@ -68,191 +120,106 @@ class GPTInterface:
             "gouvernance": {{
                 // même structure pour chaque enjeu de gouvernance
             }}
-        }}
-
-        Assurez-vous d'identifier et d'analyser TOUS les enjeux mentionnés dans chaque pilier ESG.
-        L'analyse doit être détaillée, pratique et directement applicable."""
-    def generate_iros(self, context: dict) -> dict:
-        """Génère des IRO via GPT"""
-        prompt = self._create_prompt(context)
-        
-        with st.spinner('Analyse en cours et génération des IRO...'):
-            try:
-                response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'identification des IRO.
-                        Votre rôle est d'analyser le profil de l'entreprise et de suggérer des IRO pertinents et personnalisés.
-                        Soyez précis et justifiez vos choix en fonction des spécificités de l'entreprise."""},
-                        {"role": "user", "content": prompt}
-                    ],
-                    response_format={"type": "json_object"}
-                )
-                return json.loads(response.choices[0].message.content)
-            except Exception as e:
-                st.error(f"Erreur lors de la génération des IRO: {str(e)}")
-                return {}
-
-    def _create_prompt(self, context: dict) -> str:
-        return f"""
-        Analysez le profil d'entreprise suivant et identifiez les IRO les plus pertinents:
-
-        PROFIL DE L'ENTREPRISE:
-        {context['company_description']}
-
-        SECTEUR D'ACTIVITÉ:
-        {context['industry_sector']}
-
-        MODÈLE D'AFFAIRES:
-        {context['business_model']}
-
-        CARACTÉRISTIQUES SPÉCIFIQUES:
-        {context['specific_features']}
-
-        ENJEUX PRIORITAIRES IDENTIFIÉS:
-        {json.dumps(context['priority_issues'], indent=2, ensure_ascii=False)}
-
-        Pour chaque enjeu identifié, fournissez une réponse JSON structurée avec:
-        {{
-            "pilier_esg": {{
-                "enjeu": {{
-                    "iros": ["liste d'IRO pertinents et spécifiques"],
-                    "importance": "Haute/Moyenne/Basse",
-                    "justification": "Explication détaillée de la pertinence par rapport au profil",
-                    "méthodologie_collecte": "Comment collecter cet indicateur dans ce contexte spécifique",
-                    "fréquence_mesure": "Fréquence recommandée de mesure",
-                    "points_attention": "Points spécifiques à surveiller pour cet IRO dans ce contexte"
-                }}
-            }}
-        }}
-        """
-
-def initialize_session_state():
-    """Initialise les variables de session Streamlit"""
-    if 'gpt' not in st.session_state:
-        st.session_state.gpt = GPTInterface()
-    if 'results' not in st.session_state:
-        st.session_state.results = None
-
-def company_profile_section():
-    """Section pour la description détaillée de l'entreprise"""
-    st.header("📋 Profil de l'entreprise")
-    
-    company_description = st.text_area(
-        "Description générale de l'entreprise",
-        height=150,
-        help="Décrivez votre entreprise en détail (taille, marchés, implantation géographique, etc.)"
-    )
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        industry_sector = st.text_area(
-            "Secteur d'activité",
-            height=100,
-            help="Décrivez votre secteur d'activité et ses spécificités"
-        )
-    
-    with col2:
-        business_model = st.text_area(
-            "Modèle d'affaires",
-            height=100,
-            help="Expliquez votre modèle d'affaires et sa chaîne de valeur"
-        )
-    
-    specific_features = st.text_area(
-        "Caractéristiques spécifiques",
-        height=150,
-        help="Détaillez les particularités qui distinguent votre entreprise (innovation, technologies, contraintes réglementaires, etc.)"
-    )
-    
-    return {
-        "company_description": company_description,
-        "industry_sector": industry_sector,
-        "business_model": business_model,
-        "specific_features": specific_features
-    }
-
-def priority_issues_section():
-    """Section pour identifier les enjeux prioritaires"""
-    st.header("🎯 Enjeux prioritaires")
-    
-    st.info("Identifiez et décrivez les enjeux ESG prioritaires pour votre entreprise")
-    
-    environmental_issues = st.text_area(
-        "Enjeux environnementaux",
-        height=100,
-        help="Décrivez les enjeux environnementaux spécifiques à votre activité"
-    )
-    
-    social_issues = st.text_area(
-        "Enjeux sociaux",
-        height=100,
-        help="Décrivez les enjeux sociaux et sociétaux pertinents"
-    )
-    
-    governance_issues = st.text_area(
-        "Enjeux de gouvernance",
-        height=100,
-        help="Décrivez les enjeux de gouvernance importants"
-    )
-    
-    return {
-        "environmental": environmental_issues,
-        "social": social_issues,
-        "governance": governance_issues
-    }
+        }}"""
 
 def display_results(results: Dict):
-    """Affiche les résultats de l'analyse"""
-    st.header("📊 Résultats de l'analyse")
+    """Affiche les résultats de l'analyse avec la nouvelle structure"""
+    st.header("📊 Analyse CSRD détaillée")
     
     if not results:
         st.warning("Aucun résultat à afficher")
         return
     
-    # Création d'un DataFrame pour l'export
-    rows = []
+    rows = []  # Pour l'export Excel
     
-    for pilier, enjeux in results.items():
-        st.subheader(f"Pilier : {pilier}")
-        
-        for enjeu, details in enjeux.items():
-            with st.expander(f"Enjeu : {enjeu}"):
-                st.write("**IROs recommandés :**")
-                for iro in details["iros"]:
-                    st.write(f"- {iro}")
-                
-                st.write(f"**Importance :** {details['importance']}")
-                st.write(f"**Justification :** {details['justification']}")
-                st.write(f"**Méthodologie de collecte :** {details['méthodologie_collecte']}")
-                st.write(f"**Fréquence de mesure :** {details['fréquence_mesure']}")
-                st.write(f"**Points d'attention :** {details['points_attention']}")
-            
-            # Ajout des données pour l'export
-            for iro in details["iros"]:
-                rows.append({
-                    "Pilier": pilier,
-                    "Enjeu": enjeu,
-                    "IRO": iro,
-                    "Importance": details["importance"],
-                    "Justification": details["justification"],
-                    "Méthodologie": details["méthodologie_collecte"],
-                    "Fréquence": details["fréquence_mesure"],
-                    "Points d'attention": details["points_attention"]
-                })
+    # Définition des icônes pour chaque pilier
+    pillars = {
+        "environnement": "🌍 Environnement",
+        "social": "👥 Social",
+        "gouvernance": "⚖️ Gouvernance"
+    }
+    
+    for pilier_id, pilier_name in pillars.items():
+        if pilier_id in results:
+            with st.expander(pilier_name, expanded=True):
+                for enjeu, details in results[pilier_id].items():
+                    with st.expander(f"Enjeu : {enjeu}", expanded=True):
+                        # Description
+                        st.markdown("### 📝 Description")
+                        st.write(details["description"])
+                        
+                        # Impacts
+                        st.markdown("### 💫 Impacts")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown("#### ✅ Impacts positifs")
+                            for impact in details["impacts"]["positifs"]:
+                                st.write(f"- {impact}")
+                        with col2:
+                            st.markdown("#### ❌ Impacts négatifs")
+                            for impact in details["impacts"]["negatifs"]:
+                                st.write(f"- {impact}")
+                        
+                        # Risques
+                        st.markdown("### ⚠️ Risques")
+                        st.write(f"**Niveau de risque :** {details['risques']['niveau']}")
+                        st.write(f"**Horizon :** {details['risques']['horizon']}")
+                        for risque in details["risques"]["liste"]:
+                            st.write(f"- {risque}")
+                        st.markdown("#### 🛡️ Mesures d'atténuation")
+                        for mesure in details["risques"]["mesures_attenuation"]:
+                            st.write(f"- {mesure}")
+                        
+                        # Opportunités
+                        st.markdown("### 🎯 Opportunités")
+                        st.write(f"**Potentiel :** {details['opportunites']['potentiel']}")
+                        st.write(f"**Horizon :** {details['opportunites']['horizon']}")
+                        for opportunite in details["opportunites"]["liste"]:
+                            st.write(f"- {opportunite}")
+                        st.markdown("#### 🚀 Actions proposées")
+                        for action in details["opportunites"]["actions_saisie"]:
+                            st.write(f"- {action}")
+                        
+                        # IROs
+                        st.markdown("### 📊 Indicateurs de Résultat (IRO)")
+                        for iro in details["iros"]:
+                            with st.expander(f"📌 {iro['indicateur']}"):
+                                st.write(f"**Description :** {iro['description']}")
+                                st.write(f"**Méthodologie :** {iro['methodologie']}")
+                                st.write(f"**Fréquence :** {iro['frequence']}")
+                                st.markdown("**Objectifs :**")
+                                st.write(f"- Court terme : {iro['objectifs']['court_terme']}")
+                                st.write(f"- Moyen terme : {iro['objectifs']['moyen_terme']}")
+                                st.write(f"- Long terme : {iro['objectifs']['long_terme']}")
+                            
+                            # Ajout pour l'export Excel
+                            rows.append({
+                                "Pilier": pilier_name,
+                                "Enjeu": enjeu,
+                                "IRO": iro['indicateur'],
+                                "Description IRO": iro['description'],
+                                "Méthodologie": iro['methodologie'],
+                                "Fréquence": iro['frequence'],
+                                "Objectif CT": iro['objectifs']['court_terme'],
+                                "Objectif MT": iro['objectifs']['moyen_terme'],
+                                "Objectif LT": iro['objectifs']['long_terme'],
+                                "Niveau Risque": details['risques']['niveau'],
+                                "Horizon Risque": details['risques']['horizon'],
+                                "Potentiel Opportunité": details['opportunites']['potentiel'],
+                                "Horizon Opportunité": details['opportunites']['horizon']
+                            })
     
     # Export Excel
     if rows:
         df = pd.DataFrame(rows)
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Analyse IRO')
+            df.to_excel(writer, index=False, sheet_name='Analyse CSRD')
         
         st.download_button(
-            label="📥 Télécharger les résultats (Excel)",
+            label="📥 Télécharger l'analyse complète (Excel)",
             data=buffer.getvalue(),
-            file_name=f"analyse_iro_csrd_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            file_name=f"analyse_csrd_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
