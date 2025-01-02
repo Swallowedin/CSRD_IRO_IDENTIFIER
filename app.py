@@ -14,7 +14,204 @@ st.set_page_config(
     layout="wide"
 )
 
-Erreur lors de la génération des IRO: Unterminated string starting at: line 312 column 36 (char 19032)
+import streamlit as st
+from typing import Dict, List
+import json
+from openai import OpenAI
+import pandas as pd
+from datetime import datetime
+import io
+import time
+
+# Configuration de la page
+st.set_page_config(
+    page_title="Analyseur CSRD - IRO",
+    page_icon="📊",
+    layout="wide"
+)
+
+class GPTInterface:
+    """Interface avec l'API GPT pour l'analyse CSRD"""
+    
+    def __init__(self):
+        try:
+            self.api_key = st.secrets["OPENAI_API_KEY"]
+        except KeyError:
+            st.error("❌ Clé API OpenAI non trouvée dans les secrets Streamlit.")
+            st.info("💡 Ajoutez votre clé API dans les secrets Streamlit avec la clé 'OPENAI_API_KEY'")
+            st.stop()
+            
+        self.client = OpenAI(api_key=self.api_key)
+
+    def clean_json_string(self, json_str: str) -> str:
+        """Nettoie une chaîne JSON potentiellement mal formée"""
+        # Remplace les sauts de ligne qui ne sont pas dans des guillemets
+        cleaned = ""
+        in_quotes = False
+        for char in json_str:
+            if char == '"' and json_str[max(0, len(cleaned)-1)] != '\\':
+                in_quotes = not in_quotes
+            if not in_quotes and char in '\n\r':
+                continue
+            cleaned += char
+        
+        # Vérifie et ferme les guillemets non fermés
+        quote_count = cleaned.count('"')
+        if quote_count % 2 != 0:
+            cleaned += '"'
+        
+        # Vérifie et ferme les accolades non fermées
+        open_braces = cleaned.count('{')
+        close_braces = cleaned.count('}')
+        if open_braces > close_braces:
+            cleaned += '}' * (open_braces - close_braces)
+        
+        return cleaned
+
+    def generate_iros(self, context: dict) -> dict:
+        """Génère des IRO via GPT avec gestion des erreurs améliorée"""
+        prompt = self._create_prompt(context)
+        
+        with st.spinner('Analyse en cours et génération des IRO...'):
+            progress_bar = st.progress(0)
+            try:
+                # Simulation de progression
+                for i in range(100):
+                    time.sleep(0.02)
+                    progress_bar.progress(i + 1)
+
+                response = self.client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'identification des IRO. 
+                        Votre rôle est d'analyser en profondeur TOUS les enjeux mentionnés et de fournir une analyse CSRD complète.
+                        Les IRO (Indicateurs de Résultat Obligatoires) sont des indicateurs CSRD spécifiques, distincts des KPIs classiques.
+                        
+                        RÈGLES IMPORTANTES:
+                        1. Vous DEVEZ traiter TOUS les enjeux mentionnés, sans exception
+                        2. Respectez STRICTEMENT le format JSON demandé
+                        3. Chaque IRO doit être un objet JSON valide avec TOUS les champs requis
+                        4. Ne limitez pas le nombre d'enjeux traités"""},
+                        {"role": "user", "content": prompt}
+                    ],
+                    response_format={"type": "json_object"}
+                )
+
+                raw_content = response.choices[0].message.content
+
+                try:
+                    # Premier essai avec le JSON brut
+                    result = json.loads(raw_content)
+                except json.JSONDecodeError as e:
+                    st.warning(f"Tentative de réparation du JSON... Erreur initiale: {str(e)}")
+                    
+                    # Tentative de nettoyage et nouveau parse
+                    cleaned_content = self.clean_json_string(raw_content)
+                    try:
+                        result = json.loads(cleaned_content)
+                    except json.JSONDecodeError as e2:
+                        st.error(f"Impossible de réparer le JSON: {str(e2)}")
+                        st.error("Contenu JSON problématique:")
+                        st.code(raw_content)
+                        return {}
+
+                # Validation de base de la structure
+                if not isinstance(result, dict):
+                    st.error("Le format de réponse n'est pas un dictionnaire JSON valide")
+                    return {}
+
+                # Vérification de la présence des piliers ESG
+                expected_pillars = {"environnement", "social", "gouvernance"}
+                missing_pillars = expected_pillars - set(result.keys())
+                if missing_pillars:
+                    st.warning(f"Piliers manquants dans la réponse: {', '.join(missing_pillars)}")
+                    # Création des piliers manquants
+                    for pillar in missing_pillars:
+                        result[pillar] = {}
+                
+                return result
+
+            except Exception as e:
+                st.error(f"Erreur lors de la génération des IRO: {str(e)}")
+                st.error("Détails de l'erreur pour le débogage:")
+                st.exception(e)
+                return {}
+            finally:
+                progress_bar.empty()
+
+    def _create_prompt(self, context: dict) -> str:
+        """Crée le prompt pour l'analyse CSRD"""
+        return f"""
+        En tant qu'expert CSRD, analysez TOUS les enjeux mentionnés dans les textes fournis.
+        Pour CHAQUE enjeu mentionné, vous devez fournir une analyse détaillée et complète.
+
+        PROFIL DE L'ENTREPRISE:
+        {context['company_description']}
+
+        SECTEUR D'ACTIVITÉ:
+        {context['industry_sector']}
+
+        MODÈLE D'AFFAIRES:
+        {context['business_model']}
+
+        CARACTÉRISTIQUES SPÉCIFIQUES:
+        {context['specific_features']}
+
+        ENJEUX À ANALYSER EN DÉTAIL:
+        [IMPORTANT: Analyser TOUS les enjeux mentionnés ci-dessous]
+        
+        Environnement: {context['priority_issues']['environmental']}
+        Social: {context['priority_issues']['social']}
+        Gouvernance: {context['priority_issues']['governance']}
+
+        Format JSON STRICT à respecter:
+        {{
+            "environnement": {{
+                "nom_enjeu_1": {{
+                    "description": "Description détaillée",
+                    "impacts": {{
+                        "positifs": ["impact1", "impact2"],
+                        "negatifs": ["impact1", "impact2"]
+                    }},
+                    "risques": {{
+                        "liste": ["risque1", "risque2"],
+                        "niveau": "Élevé/Moyen/Faible",
+                        "horizon": "Court/Moyen/Long terme",
+                        "mesures_attenuation": ["mesure1", "mesure2"]
+                    }},
+                    "opportunites": {{
+                        "liste": ["opportunité1", "opportunité2"],
+                        "potentiel": "Élevé/Moyen/Faible",
+                        "horizon": "Court/Moyen/Long terme",
+                        "actions_saisie": ["action1", "action2"]
+                    }},
+                    "iros": [
+                        {{
+                            "indicateur": "Nom IRO",
+                            "description": "Description IRO",
+                            "methodologie": "Méthodologie",
+                            "frequence": "Fréquence",
+                            "objectifs": {{
+                                "court_terme": "Objectif 1 an",
+                                "moyen_terme": "Objectif 3 ans",
+                                "long_terme": "Objectif 5 ans"
+                            }}
+                        }}
+                    ]
+                }}
+            }},
+            "social": {{ ... }},
+            "gouvernance": {{ ... }}
+        }}
+
+        ATTENTION:
+        - Vous DEVEZ traiter ABSOLUMENT TOUS les enjeux mentionnés
+        - Chaque IRO doit être un objet JSON COMPLET avec TOUS les champs
+        - Adaptez chaque analyse au contexte spécifique de l'entreprise
+        - Fournissez une analyse exhaustive et détaillée pour chaque enjeu
+        - Ne limitez PAS le nombre d'enjeux traités
+        - Assurez-vous que la réponse est un JSON valide et complet
+        """
 
 def company_profile_section():
     """Section pour la description détaillée de l'entreprise"""
