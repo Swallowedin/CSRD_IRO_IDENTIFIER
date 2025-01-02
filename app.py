@@ -109,41 +109,55 @@ class GPTInterface:
         with st.spinner('Analyse des impacts, risques et opportunités en cours...'):
             progress_bar = st.progress(0)
             try:
-                # Simulation de progression
-                for i in range(100):
-                    time.sleep(0.02)
-                    progress_bar.progress(i + 1)
+                # Premier appel pour la structure
+                first_response = self.client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": """Vous êtes un expert en reporting CSRD. Pour chacun des enjeux mentionnés, 
+                        identifiez UNIQUEMENT les grands domaines d'impact, sans les détailler. 
+                        Votre rôle est d'établir une première structure qui sera enrichie ensuite."""},
+                        {"role": "user", "content": prompt}
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.5
+                )
 
+                progress_bar.progress(33)
+
+                # Deuxième appel pour enrichir chaque enjeu
                 response = self.client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'analyse exhaustive des impacts, risques et opportunités (IRO).
-
-INSTRUCTIONS CRITIQUES POUR LES IRO:
-- Pour CHAQUE enjeu, vous DEVEZ identifier entre 5 et 10 éléments dans CHACUNE des catégories suivantes :
-  * Impacts positifs (minimum 5)
-  * Impacts négatifs (minimum 5)
-  * Risques identifiés (minimum 5)
-  * Opportunités (minimum 5)
-  * Mesures d'atténuation (minimum 5)
-  * Actions de saisie d'opportunités (minimum 5)
-
-- Il est STRICTEMENT INTERDIT de limiter à 2 ou 3 éléments par catégorie
-- Plus l'enjeu est important, plus le nombre d'éléments identifiés doit être proche de 10
-- Chaque élément doit être unique et pertinent pour l'enjeu analysé
-- Les éléments doivent être détaillés et contextualisés
-
-INSTRUCTIONS POUR LES DATAPOINTS:
-- Identifiez tous les datapoints CSRD pertinents
-- Citez systématiquement les paragraphes de la CSRD correspondants
-- Incluez à la fois des KPIs quantitatifs et des exigences narratives"""},
-                        {"role": "user", "content": prompt}
+                        {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'analyse exhaustive.
+                        RÈGLE ABSOLUE: Pour chaque catégorie (impacts positifs, impacts négatifs, risques, opportunités), 
+                        vous DEVEZ fournir entre 5 et 10 éléments.
+                        La réponse sera rejetée si elle contient moins de 5 éléments par catégorie.
+                        
+                        Chaque élément doit être :
+                        1. Détaillé et explicite (pas de descriptions vagues)
+                        2. Spécifique à l'enjeu traité
+                        3. Actionnable et mesurable quand applicable"""},
+                        {"role": "assistant", "content": first_response.choices[0].message.content},
+                        {"role": "user", "content": """Enrichissez CHAQUE enjeu avec au minimum 5 éléments par catégorie.
+                        
+                        FORMAT STRICT À RESPECTER:
+                        - Au moins 5 impacts positifs par enjeu
+                        - Au moins 5 impacts négatifs par enjeu
+                        - Au moins 5 risques identifiés par enjeu
+                        - Au moins 5 mesures d'atténuation par enjeu
+                        - Au moins 5 opportunités par enjeu
+                        - Au moins 5 actions proposées par enjeu
+                        
+                        ATTENTION: Je refuse catégoriquement toute réponse avec moins de 5 éléments par catégorie.
+                        
+                        Les datapoints CSRD doivent TOUS citer les paragraphes de référence de la CSRD."""}
                     ],
                     response_format={"type": "json_object"},
                     temperature=0.7,
                     max_tokens=4000
                 )
 
+                progress_bar.progress(66)
                 raw_content = response.choices[0].message.content
 
                 try:
@@ -162,24 +176,29 @@ INSTRUCTIONS POUR LES DATAPOINTS:
                         st.code(raw_content)
                         return {}
 
-                # Validation du nombre d'éléments par catégorie
+                progress_bar.progress(100)
+
+                # Validation stricte du nombre d'éléments
                 for pilier, enjeux in result.items():
                     for enjeu, details in enjeux.items():
-                        for categorie in ['impacts', 'risques', 'opportunites']:
-                            if categorie == 'impacts':
-                                for type_impact in ['positifs', 'negatifs']:
-                                    if len(details.get(categorie, {}).get(type_impact, [])) < 5:
-                                        st.warning(f"Attention: Nombre insuffisant d'{type_impact} pour l'enjeu {enjeu}")
-                            elif categorie == 'risques':
-                                if len(details.get(categorie, {}).get('liste', [])) < 5:
-                                    st.warning(f"Attention: Nombre insuffisant de risques pour l'enjeu {enjeu}")
-                                if len(details.get(categorie, {}).get('mesures_attenuation', [])) < 5:
-                                    st.warning(f"Attention: Nombre insuffisant de mesures d'atténuation pour l'enjeu {enjeu}")
-                            elif categorie == 'opportunites':
-                                if len(details.get(categorie, {}).get('liste', [])) < 5:
-                                    st.warning(f"Attention: Nombre insuffisant d'opportunités pour l'enjeu {enjeu}")
-                                if len(details.get(categorie, {}).get('actions_saisie', [])) < 5:
-                                    st.warning(f"Attention: Nombre insuffisant d'actions pour l'enjeu {enjeu}")
+                        if len(details.get('impacts', {}).get('positifs', [])) < 5:
+                            st.error(f"❌ Réponse rejetée : moins de 5 impacts positifs pour {enjeu}")
+                            return self.generate_iros(context)  # Nouvelle tentative
+                        if len(details.get('impacts', {}).get('negatifs', [])) < 5:
+                            st.error(f"❌ Réponse rejetée : moins de 5 impacts négatifs pour {enjeu}")
+                            return self.generate_iros(context)  # Nouvelle tentative
+                        if len(details.get('risques', {}).get('liste', [])) < 5:
+                            st.error(f"❌ Réponse rejetée : moins de 5 risques pour {enjeu}")
+                            return self.generate_iros(context)  # Nouvelle tentative
+                        if len(details.get('risques', {}).get('mesures_attenuation', [])) < 5:
+                            st.error(f"❌ Réponse rejetée : moins de 5 mesures d'atténuation pour {enjeu}")
+                            return self.generate_iros(context)  # Nouvelle tentative
+                        if len(details.get('opportunites', {}).get('liste', [])) < 5:
+                            st.error(f"❌ Réponse rejetée : moins de 5 opportunités pour {enjeu}")
+                            return self.generate_iros(context)  # Nouvelle tentative
+                        if len(details.get('opportunites', {}).get('actions_saisie', [])) < 5:
+                            st.error(f"❌ Réponse rejetée : moins de 5 actions pour {enjeu}")
+                            return self.generate_iros(context)  # Nouvelle tentative
 
                 return result
 
@@ -302,9 +321,9 @@ INSTRUCTIONS POUR LES DATAPOINTS:
 
         ATTENTION:
         - Vous DEVEZ traiter ABSOLUMENT TOUS les enjeux mentionnés
-        - Pour chaque enjeu, fournissez AU MINIMUM 5 éléments pour chaque liste (impacts, risques, opportunités)
+        - Pour chaque enjeu, fournissez AU MINIMUM 5 éléments pour chaque catégorie
         - Le nombre d'éléments doit être adapté à l'importance de l'enjeu (jusqu'à 10 par catégorie)
-        - Chaque élément doit être unique et pertinent pour l'enjeu
+        - Chaque élément doit être détaillé et spécifique à l'enjeu
         - Citez les paragraphes CSRD pour chaque datapoint
         - Ne limitez PAS le nombre d'enjeux traités
         - Assurez-vous que la réponse est un JSON valide et complet
