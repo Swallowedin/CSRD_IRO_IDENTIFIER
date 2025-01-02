@@ -292,28 +292,35 @@ def display_results(results: Dict):
                                         st.write(f"- {action}")
                     
                     # IROs (toujours affichés)
-                    if "iros" in details:
+                    if "iros" in details and isinstance(details["iros"], list):
                         st.markdown("### 📊 Indicateurs de Résultat Obligatoires (IRO)")
                         for idx, iro in enumerate(details["iros"], 1):
-                            if isinstance(iro, dict):
-                                with st.expander(f"📌 IRO {idx}: {iro.get('indicateur', 'Non spécifié')}", expanded=True):
-                                    if "description" in iro:
-                                        st.write(f"**Description :** {iro['description']}")
-                                    if "methodologie" in iro:
-                                        st.write(f"**Méthodologie :** {iro['methodologie']}")
-                                    if "frequence" in iro:
-                                        st.write(f"**Fréquence :** {iro['frequence']}")
-                                    if "objectifs" in iro:
-                                        st.markdown("**Objectifs :**")
-                                        obj = iro["objectifs"]
-                                        if "court_terme" in obj:
-                                            st.write(f"- Court terme : {obj['court_terme']}")
-                                        if "moyen_terme" in obj:
-                                            st.write(f"- Moyen terme : {obj['moyen_terme']}")
-                                        if "long_terme" in obj:
-                                            st.write(f"- Long terme : {obj['long_terme']}")
+                            if not isinstance(iro, dict):
+                                st.error(f"Format d'IRO invalide pour l'enjeu {enjeu}")
+                                continue
+                                
+                            with st.expander(f"📌 IRO {idx}: {iro.get('indicateur', 'Non spécifié')}", expanded=True):
+                                for field, label in [
+                                    ('description', 'Description'),
+                                    ('methodologie', 'Méthodologie'),
+                                    ('frequence', 'Fréquence')
+                                ]:
+                                    if field in iro:
+                                        st.write(f"**{label} :** {iro[field]}")
+                                
+                                if "objectifs" in iro and isinstance(iro["objectifs"], dict):
+                                    st.markdown("**Objectifs :**")
+                                    obj = iro["objectifs"]
+                                    for term, label in [
+                                        ('court_terme', 'Court terme'),
+                                        ('moyen_terme', 'Moyen terme'),
+                                        ('long_terme', 'Long terme')
+                                    ]:
+                                        if term in obj:
+                                            st.write(f"- {label} : {obj[term]}")
                             
-                                # Ajout pour l'export Excel
+                            # Ajout pour l'export Excel
+                            if isinstance(iro.get('objectifs'), dict):
                                 row_data = {
                                     "Pilier": pilier_name,
                                     "Enjeu": enjeu,
@@ -321,9 +328,9 @@ def display_results(results: Dict):
                                     "Description IRO": iro.get('description', ''),
                                     "Méthodologie": iro.get('methodologie', ''),
                                     "Fréquence": iro.get('frequence', ''),
-                                    "Objectif CT": iro.get('objectifs', {}).get('court_terme', ''),
-                                    "Objectif MT": iro.get('objectifs', {}).get('moyen_terme', ''),
-                                    "Objectif LT": iro.get('objectifs', {}).get('long_terme', ''),
+                                    "Objectif CT": iro['objectifs'].get('court_terme', ''),
+                                    "Objectif MT": iro['objectifs'].get('moyen_terme', ''),
+                                    "Objectif LT": iro['objectifs'].get('long_terme', ''),
                                     "Description Enjeu": details.get('description', ''),
                                     "Impacts Positifs": ", ".join(details.get('impacts', {}).get('positifs', [])),
                                     "Impacts Négatifs": ", ".join(details.get('impacts', {}).get('negatifs', [])),
@@ -338,8 +345,6 @@ def display_results(results: Dict):
                                 }
                                 
                                 rows.append(row_data)
-                            else:
-                                st.error(f"Format d'IRO invalide pour l'enjeu {enjeu}")
                     
                     st.divider()
     
