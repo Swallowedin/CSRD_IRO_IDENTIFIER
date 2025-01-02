@@ -28,29 +28,79 @@ class GPTInterface:
         self.client = OpenAI(api_key=self.api_key)
 
     def clean_json_string(self, json_str: str) -> str:
-        """Nettoie une chaîne JSON potentiellement mal formée"""
-        # Remplace les sauts de ligne qui ne sont pas dans des guillemets
-        cleaned = ""
-        in_quotes = False
-        for char in json_str:
-            if char == '"' and json_str[max(0, len(cleaned)-1)] != '\\':
-                in_quotes = not in_quotes
-            if not in_quotes and char in '\n\r':
-                continue
-            cleaned += char
+        """Nettoie une chaîne JSON potentiellement mal formée de manière plus robuste"""
+        # Étape 1: Nettoyage des sauts de ligne et espaces problématiques
+        lines = json_str.split('\n')
+        cleaned_lines = []
+        in_string = False
+        escape_next = False
         
-        # Vérifie et ferme les guillemets non fermés
-        quote_count = cleaned.count('"')
-        if quote_count % 2 != 0:
-            cleaned += '"'
+        for line in lines:
+            cleaned_line = ''
+            for char in line:
+                if char == '\\' and not escape_next:
+                    escape_next = True
+                    cleaned_line += char
+                    continue
+                    
+                if char == '"' and not escape_next:
+                    in_string = not in_string
+                    
+                if in_string or char not in ('\n', '\r', '\t'):
+                    cleaned_line += char
+                    
+                escape_next = False
+                
+            cleaned_lines.append(cleaned_line)
         
-        # Vérifie et ferme les accolades non fermées
-        open_braces = cleaned.count('{')
-        close_braces = cleaned.count('}')
-        if open_braces > close_braces:
-            cleaned += '}' * (open_braces - close_braces)
+        cleaned = ' '.join(cleaned_lines)
         
-        return cleaned
+        # Étape 2: Équilibrage des guillemets
+        quote_positions = []
+        backslash_positions = []
+        for i, char in enumerate(cleaned):
+            if char == '\\':
+                backslash_positions.append(i)
+            elif char == '"' and i-1 not in backslash_positions:
+                quote_positions.append(i)
+        
+        # Si nombre impair de guillemets, ajout d'un guillemet final
+        if len(quote_positions) % 2 != 0:
+            last_quote = quote_positions[-1]
+            next_brace = cleaned.find('}', last_quote)
+            if next_brace != -1:
+                cleaned = cleaned[:next_brace] + '"' + cleaned[next_brace:]
+            else:
+                cleaned += '"'
+        
+        # Étape 3: Équilibrage des accolades
+        stack = []
+        for i, char in enumerate(cleaned):
+            if char == '{':
+                stack.append(char)
+            elif char == '}':
+                if stack:
+                    stack.pop()
+                
+        # Ajout des accolades manquantes
+        cleaned += '}' * len(stack)
+        
+        # Étape 4: Validation finale de la structure
+        try:
+            # Tentative de parse pour vérifier la validité
+            json.loads(cleaned)
+            return cleaned
+        except json.JSONDecodeError as e:
+            # Si erreur, tentative de correction supplémentaire
+            if "Expecting ',' delimiter" in str(e):
+                pos = int(str(e).split('char ')[-1].strip())
+                cleaned = cleaned[:pos] + ',' + cleaned[pos:]
+                
+            # Vérification des objets non fermés
+            if cleaned.count('{') > cleaned.count('}'):
+                cleaned += '}' * (cleaned.count('{') - cleaned.count('}'))
+            
+            return cleaned
 
     def generate_iros(self, context: dict) -> dict:
         """Génère des IRO via GPT avec gestion des erreurs améliorée"""
