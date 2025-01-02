@@ -33,7 +33,7 @@ class GPTInterface:
         with st.spinner('Analyse en cours et génération des IRO...'):
             try:
                 response = self.client.chat.completions.create(
-                    model="gpt-4-turbo-preview",  # Utilisation du modèle le plus récent
+                    model="gpt-4o-mini",  # Utilisation du modèle le plus récent
                     messages=[
                         {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'identification des IRO. 
                         Votre rôle est d'analyser en profondeur TOUS les enjeux mentionnés et de fournir une analyse CSRD complète.
