@@ -9,14 +9,19 @@ from datetime import datetime
 st.set_page_config(
     page_title="Analyseur CSRD - IRO",
     page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 class GPTInterface:
     """Interface avec l'API GPT"""
     def __init__(self):
-        self.api_key = st.secrets["openai"]["api_key"]
+        try:
+            self.api_key = st.secrets["OPENAI_API_KEY"]
+        except KeyError:
+            st.error("❌ Clé API OpenAI non trouvée dans les secrets Streamlit.")
+            st.info("💡 Ajoutez votre clé API dans les secrets Streamlit avec la clé 'OPENAI_API_KEY'")
+            st.stop()
+            
         self.client = OpenAI(api_key=self.api_key)
 
     def generate_iros(self, context: dict) -> dict:
@@ -26,7 +31,7 @@ class GPTInterface:
         with st.spinner('Analyse en cours et génération des IRO...'):
             try:
                 response = self.client.chat.completions.create(
-                    model="gpt-4-turbo-preview",
+                    model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": """Vous êtes un expert en reporting CSRD spécialisé dans l'identification des IRO.
                         Votre rôle est d'analyser le profil de l'entreprise et de suggérer des IRO pertinents et personnalisés.
@@ -42,7 +47,7 @@ class GPTInterface:
 
     def _create_prompt(self, context: dict) -> str:
         return f"""
-        Analyez le profil d'entreprise suivant et identifiez les IRO les plus pertinents:
+        Analysez le profil d'entreprise suivant et identifiez les IRO les plus pertinents:
 
         PROFIL DE L'ENTREPRISE:
         {context['company_description']}
@@ -165,10 +170,7 @@ def display_results(results: Dict):
         st.subheader(f"Pilier : {pilier}")
         
         for enjeu, details in enjeux.items():
-            st.write(f"**Enjeu : {enjeu}**")
-            
-            # Création d'un expandable pour les détails
-            with st.expander("Voir les détails"):
+            with st.expander(f"Enjeu : {enjeu}"):
                 st.write("**IROs recommandés :**")
                 for iro in details["iros"]:
                     st.write(f"- {iro}")
@@ -192,14 +194,15 @@ def display_results(results: Dict):
                     "Points d'attention": details["points_attention"]
                 })
     
-    # Création du DataFrame pour l'export
+    # Export Excel
     if rows:
         df = pd.DataFrame(rows)
+        excel_data = df.to_excel(index=False, engine='openpyxl')
         st.download_button(
             label="📥 Télécharger les résultats (Excel)",
-            data=df.to_excel(index=False).encode('utf-8'),
+            data=excel_data,
             file_name=f"analyse_iro_csrd_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            mime="application/vnd.ms-excel"
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
 def main():
