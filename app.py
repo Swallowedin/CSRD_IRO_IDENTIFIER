@@ -4,6 +4,7 @@ import json
 from openai import OpenAI
 import pandas as pd
 from datetime import datetime
+import io
 
 # Configuration de la page
 st.set_page_config(
@@ -197,10 +198,13 @@ def display_results(results: Dict):
     # Export Excel
     if rows:
         df = pd.DataFrame(rows)
-        excel_data = df.to_excel(index=False, engine='openpyxl')
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Analyse IRO')
+        
         st.download_button(
             label="📥 Télécharger les résultats (Excel)",
-            data=excel_data,
+            data=buffer.getvalue(),
             file_name=f"analyse_iro_csrd_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
